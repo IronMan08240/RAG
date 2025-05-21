@@ -1,62 +1,46 @@
-import openai
-from langchain.embeddings import OpenAIEmbeddings
+#%%
 import os 
-import json 
-import requests
+import openai
 from dotenv import load_dotenv
+from langchain.embeddings import OpenAIEmbeddings
+#%%
 
-#系統變數
+# 系統變數
 load_dotenv()
 
 class AzureModel:
-    #建構式
+
     def __init__(self):
         self.base = os.getenv("OPENAI_API_BASE")
         self.key = os.getenv("OPENAI_API_KEY")
         self.version = os.getenv("OPENAI_API_VERSION")
         self.name = os.getenv("GPT3_ENGINE")
 
-    #回傳模型
+    # 查看模型名稱
     def get_name(self):
         return(self.name)
-    
-    def get_text(self):
-        url = self.base + "/openai/deployments?api-version="+self.version
-        r = requests.get(url, headers={"api-key": self.key})
-        print(r.text)
         
-    #設定Azure openai 參數
+    # 設定 Azure OpenAI 參數
     def setmodel(self):
         openai.api_base = self.base
         openai.api_key = self.key
-        openai.api_type = "azure"
         openai.api_version = self.version
-        os.environ["OPENAI_API_TYPE"] = "azure"
-        os.environ["OPENAI_API_VERSION"] = self.version
-        os.environ["OPENAI_API_BASE"] = self.base
-        os.environ["OPENAI_API_KEY"] = self.key
+        openai.api_type = "azure"
 
-    #使用模型ada（output : Azure embedding model）
+    ### Embedding Model ###
     def using_embedding(self):
-        #更改ada模型
         self.name = os.getenv("Embedding_DEPLOYMENT")
         self.setmodel()
+        embeddings = OpenAIEmbeddings(deployment=self.name)
+        return(embeddings)
 
-        #使用ada模型
-        # embeddings = OpenAIEmbeddings(deployment=os.getenv("ADA_DEPLOYMENT"),chunk_size=1)
-        embeddings = OpenAIEmbeddings(deployment=os.getenv("Embedding_DEPLOYMENT"))
-        return (embeddings)
-
-    #使用模型為gpt（input : 問題,相似內容 / output : 回傳生成內容,生成花費)
+    ### 保險模型 ###
     def insurance_gpt(self,question,text):
 
-        # OpenAI API Key
-        openai.api_type = "azure"
-        openai.api_version = self.version
-        openai.api_base = self.base
-        openai.api_key = self.key
+        # 載入 Azure OpenAI 參數
+        self.setmodel()
 
-        #設定prompt
+        # 設定 prompt
         prompt = f"""
         0. 開頭先回答這是一個根據全球人壽官方網站的回答。
         1. 你是一個文字摘要機器人，繁體中文是你唯一的回答語言，不要進行數字計算，每段分行，條列式說明。\n
@@ -71,36 +55,30 @@ class AzureModel:
         Text: <{text}> \n
         """
         
-        #啟用模型
+        # 啟用模型
         message = [
             {'role':'system','content':prompt},
             {'role':'user', 'content':question}
         ]
 
         response = openai.ChatCompletion.create(
-            # model=self.name,
             engine=self.name,
             messages= message,
             temperature=0
         )
 
-        #模型回覆訊息
+        # 模型回覆訊息
         showmsg = response.choices[0].message["content"]
         
-        #模型花費
-        ## costtoken = response.usage["prompt_tokens"]/1000*0.094+response.usage["completion_tokens"]/1000*0.125
-        ## return(showmsg, costtoken)
         return(showmsg)
     
+    ### 永續模型 ###
     def sustainable_gpt(self,question,text):
 
-        # OpenAI API Key
-        openai.api_type = "azure"
-        openai.api_version = self.version
-        openai.api_base = self.base
-        openai.api_key = self.key
+        # 載入 Azure OpenAI 參數
+        self.setmodel()
 
-        #設定prompt
+        # 設定 prompt
         prompt = f"""
         0. 開頭先回答這是一個根據全球人壽永續報告書的回答。
         1. 你是一個文字摘要機器人，繁體中文是你唯一的回答語言，不要進行數字計算，每段分行，條列式說明。\n
@@ -118,53 +96,41 @@ class AzureModel:
         Text: <{text}> \n
         """
         
-        #啟用模型
+        # 啟用模型
         message = [
             {'role':'system','content':prompt},
             {'role':'user', 'content':question}
         ]
 
         response = openai.ChatCompletion.create(
-            # model=self.name,
             engine=self.name,
             messages= message,
             temperature=0
         )
 
-        #模型回覆訊息
+        # 模型回覆訊息
         showmsg = response.choices[0].message["content"]
         return(showmsg)
     
+    ### 判斷該使用何種模型 ###
     def classification(self, question, text):
-        # OpenAI API Key
-        openai.api_type = "azure"
-        openai.api_version = self.version
-        openai.api_base = self.base
-        openai.api_key = self.key
-
+        self.setmodel()
         prompt = f"""
         1. 兩組三個單引用號符號中的 question 是使用者的疑問，根據使用者疑問、去尖角括號中的text和參考資料來源，判斷這是「永續發展相關」、「保險相關」及「其它」中的哪一類問答。\n
         2. 回答只能是「永續發展相關」、「保險相關」及「其它」其中一個單詞。\n
         Question: '''{question}'''\n
         Text: <{text}> \n
         """
-
-        #啟用模型
         message = [
             {'role':'system','content':prompt},
             {'role':'user', 'content':question}
         ]
-
         response = openai.ChatCompletion.create(
-            # model=self.name,
             engine=self.name,
             messages= message,
             temperature=0
         )
-
-        #模型回覆訊息
         showmsg = response.choices[0].message["content"]
-
         return(showmsg)
     
     
