@@ -1,5 +1,5 @@
 #%%
-from model import AzureModel
+from model_openai import AzureModel
 import glob
 import os
 from dotenv import load_dotenv
